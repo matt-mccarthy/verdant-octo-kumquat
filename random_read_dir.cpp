@@ -1,9 +1,11 @@
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <numeric>
+#include <random>
 #include <sstream>
 #include <string>
 
@@ -12,7 +14,7 @@
 using namespace std;
 using namespace chrono;
 
-double run_experiment(int first, int last, int hash_mod, string base_dir);
+double run_experiment(int first, int last, int hash_mod, string base_dir, int* ordering);
 double get_average(double* times, int num_trials);
 double get_stddev(double* times, int num_trials, double average);
 
@@ -27,10 +29,19 @@ int main(int argc, char** argv)
 	int		num_trials	= atoi(argv[4]);
 	string	base_dir(argv[5]);
 	
+	int		indices[last-first];
+	
+	for ( int i = 0 ; i < last - first ; i++ )
+		indices[i] = i + first;
+		
+	unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+		
+	shuffle(indices, indices + (last - first), mt19937_64(seed));
+	
 	double	times[num_trials];
 	
 	for ( int i = 0 ; i < num_trials ; i++)
-		times[i]	= run_experiment(first, last, hash_mod, base_dir);
+		times[i]	= run_experiment(first, last, hash_mod, base_dir, indices);
 		
 	double av(get_average(times, num_trials));
 	double sd(get_stddev(times, num_trials, av));
@@ -38,7 +49,7 @@ int main(int argc, char** argv)
 	cout << av << "\t" << sd << endl;
 }
 
-double run_experiment(int first, int last, int hash_mod, string base_dir)
+double run_experiment(int first, int last, int hash_mod, string base_dir, int* ordering)
 {
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
@@ -53,14 +64,14 @@ double run_experiment(int first, int last, int hash_mod, string base_dir)
 	ts	= system_clock::now();
 	
 	// Read stuff
-	for ( int i = first ; i <= last ; i++ )
-	{
-		mod	= i % hash_mod;
+	for ( int i = 0 ; i < last - first ; i++ )
+	{	
+		mod	= ordering[i] % hash_mod;
 		one	= mod % 10;
 		ten	= (mod / 10) % 10;
 		hun	= (mod / 100) % 10;
-		
-		strstream << base_dir << '/' << hun << '/' << ten << '/' << one << '/' << i << ".txt" << endl;
+
+		strstream << base_dir << '/' << hun << '/' << ten << '/' << one << '/' << ordering[i] << ".txt" << endl;
 		strstream >> file_loc;
 		
 		input_file.open(file_loc.c_str());
