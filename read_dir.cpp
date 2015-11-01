@@ -36,6 +36,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	// Get operation mode
 	op_mode	mode;
 
 	switch (atoi(argv[1]))
@@ -47,10 +48,13 @@ int main(int argc, char** argv)
 			cerr << "Input correct operating mode (0, 1, or 2)" << endl;
 			return 1;
 	}
+	
+	// Fill out necessary arguments
 	int		hash_mod	= atoi(argv[2]);
 	int		num_trials	= atoi(argv[3]);
 	string	base_dir(argv[4]);
 
+	// Grab what we need for each mode respectively
 	int*	indices;
 	int		first, last;
 	string	trace_path;
@@ -62,7 +66,8 @@ int main(int argc, char** argv)
 
 		if (last <= first)
 		{
-			cerr << "Enter smallest index first, and largest index last" << endl;
+			cerr << "Enter smallest index first, and largest index last"
+				<< endl;
 			return 1;
 		}
 
@@ -76,8 +81,9 @@ int main(int argc, char** argv)
 		indices		= get_trace_indices(trace_path.c_str());
 	}
 
+	// Run the benchmark
 	double	times[num_trials];
-
+	
 	for ( int i = 0 ; i < num_trials ; i++)
 	{
 		if ( mode == OP_RAND )
@@ -89,6 +95,7 @@ int main(int argc, char** argv)
 		times[i]	= run_experiment(indices, hash_mod, base_dir);
 	}
 
+	// Clean up and do stats
 	delete indices;
 
 	double av(get_average(times, num_trials));
@@ -128,6 +135,7 @@ int* get_trace_indices(const char* trace_path)
 	int			cur_index;
 	int*		indices;
 
+	// Read each line in the trace into a vector
 	while (trace.good())
 	{
 		trace >> cur_index;
@@ -135,7 +143,8 @@ int* get_trace_indices(const char* trace_path)
 	}
 
 	indices	= new int[index_list.size() + 1];
-
+	
+	// Write all elements of the vector into an array
 	for ( unsigned i = 0 ; i < index_list.size() ; i++ )
 		indices[i] = index_list[i];
 
@@ -146,6 +155,7 @@ int* get_trace_indices(const char* trace_path)
 
 double run_experiment(int* ordering, int hash_mod, string base_dir)
 {
+	// Initialize things
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
 	string			file_loc;
@@ -161,8 +171,7 @@ double run_experiment(int* ordering, int hash_mod, string base_dir)
 	// Read stuff
 	for ( int* i = ordering ; *i != -1 ; i++ )
 	{
-		cout << *i << endl;
-
+		// Compute location of file
 		mod	= *i % hash_mod;
 		one	= mod % 10;
 		ten	= (mod / 10) % 10;
@@ -172,26 +181,12 @@ double run_experiment(int* ordering, int hash_mod, string base_dir)
 			<< *i << ".txt" << endl;
 		strstream >> file_loc;
 
-		cout << file_loc << endl;
-
+		// Read the file
 		input_file.open(file_loc.c_str());
-
-		if ( !input_file.good() )
-		{
-			cerr << "Bad file" << endl;
-			return 1;
-		}
 
 		input_file.read(read_here, FILE_SIZE);
 
 		input_file.close();
-
-		for ( int j = 0 ; j < FILE_SIZE ; j++ )
-			if ( read_here[j] != 0 )
-			{
-				cerr << "Bad read" << endl;
-				return 1;
-			}
 	}
 
 	tf	= system_clock::now();
