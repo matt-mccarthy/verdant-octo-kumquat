@@ -15,7 +15,9 @@
 using namespace std;
 using namespace chrono;
 
-double run_experiment(int* indices, int hash_mod, string base_dir);
+double run_experiment_dir(int* indices, int hash_mod, string base_dir);
+double run_experiment_db(int* indices, string db_loc);
+
 double get_average(double* times, int num_trials);
 double get_stddev(double* times, int num_trials, double average);
 
@@ -67,7 +69,8 @@ int main(int argc, char** argv)
 		}
 
 		indices		= (mode == OP_CONT) ?
-						get_cont_indices(first, last) : new int;
+						get_cont_indices(first, last) :
+						get_rand_indices(first, last);
 	}
 
 	else
@@ -82,11 +85,11 @@ int main(int argc, char** argv)
 	{
 		if ( mode == OP_RAND )
 		{
-			delete indices;
-			indices = get_rand_indices(first, last);
+			unsigned	seed = chrono::system_clock::now().time_since_epoch().count();
+			shuffle(indices, indices + (last - first), mt19937_64(seed));
 		}
 
-		times[i]	= run_experiment(indices, hash_mod, base_dir);
+		times[i]	= run_experiment_dir(indices, hash_mod, base_dir);
 	}
 
 	delete indices;
@@ -144,7 +147,7 @@ int* get_trace_indices(const char* trace_path)
 	return indices;
 }
 
-double run_experiment(int* ordering, int hash_mod, string base_dir)
+double run_experiment_dir(int* ordering, int hash_mod, string base_dir)
 {
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
@@ -161,8 +164,6 @@ double run_experiment(int* ordering, int hash_mod, string base_dir)
 	// Read stuff
 	for ( int* i = ordering ; *i != -1 ; i++ )
 	{
-		cout << *i << endl;
-
 		mod	= *i % hash_mod;
 		one	= mod % 10;
 		ten	= (mod / 10) % 10;
@@ -172,27 +173,39 @@ double run_experiment(int* ordering, int hash_mod, string base_dir)
 			<< *i << ".txt" << endl;
 		strstream >> file_loc;
 
-		cout << file_loc << endl;
-
 		input_file.open(file_loc.c_str());
-
-		if ( !input_file.good() )
-		{
-			cerr << "Bad file" << endl;
-			return 1;
-		}
 
 		input_file.read(read_here, FILE_SIZE);
 
 		input_file.close();
-
-		for ( int j = 0 ; j < FILE_SIZE ; j++ )
-			if ( read_here[j] != 0 )
-			{
-				cerr << "Bad read" << endl;
-				return 1;
-			}
 	}
+
+	tf	= system_clock::now();
+
+	delete[] read_here;
+
+	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
+}
+
+double run_experiment_db(int* ordering, int first, string db_loc)
+{
+	high_resolution_clock::time_point ts, tf;
+	ifstream		input_file;
+	char*			read_here = new char[FILE_SIZE];
+
+	ts	= system_clock::now();
+	
+	input_file.open(db_loc.c_str());
+
+	// Read stuff
+	for ( int* i = ordering ; *i != -1 ; i++ )
+	{
+		input_file.seekg((*i - first) * FILE_SIZE, input_file.beg); 
+		
+		input_file.read(read_here, FILE_SIZE);
+	}
+	
+	input_file.close();
 
 	tf	= system_clock::now();
 
