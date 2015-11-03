@@ -22,25 +22,36 @@ double get_average(double* times, int num_trials);
 double get_stddev(double* times, int num_trials, double average);
 
 int*	get_cont_indices(int first, int last);
-int*	get_rand_indices(int first, int last);
-int*	get_trace_indices(const char* trace_path);
+int*	get_trace_indices(const char* trace_path, int offset);
 
 enum op_mode { OP_CONT, OP_RAND, OP_TRACE };
+enum rd_mode { RD_DIR, RD_DB };
 
 int main(int argc, char** argv)
 {
-	if ( argc < 6 || argc > 7 )
+	if ( argc < 7 || argc > 8 )
 	{
-		cerr << "Usage is: " << argv[0] << "<operating mode> <hash modulus> "
+		cerr << "Usage is: " << argv[0] << "<read mode> <operating mode> "
 			<< " <num trials> <directory where files are stored> "
-			<< "[<trace file> || <first index> <last index>]" << endl;
+			<< "[<trace file> || <first index> <last index>] [<hash modulus> <db offset>]" << endl;
 
 		return 1;
+	}
+	
+	rd_mode read;
+	
+	switch (atoi(argv[1]))
+	{
+		case 0:		read = RD_DIR;		break;
+		case 1:		read = RD_DB;		break;
+		default:
+			cerr << "Input correct read mode (0, or 1)" << endl;
+			return 1;
 	}
 
 	op_mode	mode;
 
-	switch (atoi(argv[1]))
+	switch (atoi(argv[2]))
 	{
 		case 0:		mode = OP_CONT;		break;
 		case 1:		mode = OP_RAND;		break;
@@ -49,35 +60,58 @@ int main(int argc, char** argv)
 			cerr << "Input correct operating mode (0, 1, or 2)" << endl;
 			return 1;
 	}
-	int		hash_mod	= atoi(argv[2]);
+	
 	int		num_trials	= atoi(argv[3]);
-	string	base_dir(argv[4]);
+	
+	int		first, last;
+	int		hash_mod;
+	int		db_offset;
+	string	base_dir;
+	string	trace_path;
+	string	db_loc;
+
+	if ( read == RD_DIR )
+	{
+		hash_mod	= atoi(argv[4]);
+		base_dir	= string(argv[5]);
+		
+		if ( mode != OP_TRACE )
+		{
+			first	= atoi(argv[6]);
+			last	= atoi(argv[7]);
+		}
+		
+		else
+		{
+			trace_path	= string(argv[6]);
+			db_offset	= 0;
+		}
+	}
+	
+	else if ( read == RD_DB )
+	{
+		db_loc	= string(argv[4]);
+		
+		if ( mode != OP_TRACE )
+		{
+			first	= atoi(argv[5]);
+			last	= atoi(argv[6]);
+		}
+		
+		else
+		{
+			trace_path	= string(argv[5]);
+			db_offset	= atoi(argv[6]);
+		}
+	}
 
 	int*	indices;
-	int		first, last;
-	string	trace_path;
-
-	if ( mode == OP_CONT || mode == OP_RAND )
-	{
-		first		= atoi(argv[5]);
-		last		= atoi(argv[6]);
-
-		if (last <= first)
-		{
-			cerr << "Enter smallest index first, and largest index last" << endl;
-			return 1;
-		}
-
-		indices		= (mode == OP_CONT) ?
-						get_cont_indices(first, last) :
-						get_rand_indices(first, last);
-	}
-
+	
+	if ( mode != OP_TRACE )
+		indices	= get_cont_indices(first, last);
+		
 	else
-	{
-		trace_path	= string(argv[5]);
-		indices		= get_trace_indices(trace_path.c_str());
-	}
+		indices	= get_trace_indices(trace_path.c_str(), db_offset);
 
 	double	times[num_trials];
 
@@ -88,8 +122,12 @@ int main(int argc, char** argv)
 			unsigned	seed = chrono::system_clock::now().time_since_epoch().count();
 			shuffle(indices, indices + (last - first), mt19937_64(seed));
 		}
-
-		times[i]	= run_experiment_dir(indices, hash_mod, base_dir);
+		
+		if ( read == RD_DIR )
+			times[i]	= run_experiment_dir(indices, hash_mod, base_dir); 
+		
+		else if ( read == RD_DB )
+			times[i]	= run_experiment_db(indices, base_dir); 
 	}
 
 	delete indices;
@@ -124,7 +162,7 @@ int* get_rand_indices(int first, int last)
 	return indices;
 }
 
-int* get_trace_indices(const char* trace_path)
+int* get_trace_indices(const char* trace_path, int offset)
 {
 	ifstream	trace(trace_path);
 	vector<int>	index_list;
@@ -134,7 +172,7 @@ int* get_trace_indices(const char* trace_path)
 	while (trace.good())
 	{
 		trace >> cur_index;
-		index_list.push_back(cur_index);
+		index_list.push_back(cur_index - offset);
 	}
 
 	indices	= new int[index_list.size() + 1];
