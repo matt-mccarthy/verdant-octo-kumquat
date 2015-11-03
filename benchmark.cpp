@@ -8,32 +8,36 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
-
-#define	FILE_SIZE	14336
 
 using namespace std;
 using namespace chrono;
 
-double run_experiment_dir(int* indices, int hash_mod, string base_dir);
-double run_experiment_db(int* indices, string db_loc);
+typedef unordered_map<int,int> db_map;
+typedef unordered_map<int,string> dir_map;
 
-double get_average(double* times, int num_trials);
-double get_stddev(double* times, int num_trials, double average);
+double	run_experiment_dir	(int* indices, int hash_mod, int file_size, string base_dir);
+double	run_experiment_db	(int* indices, db_map& mapper, int file_size, string db_loc);
 
-int*	get_cont_indices(int first, int last);
-int*	get_trace_indices(const char* trace_path, int offset);
+double	get_average			(double* times, int num_trials);
+double	get_stddev			(double* times, int num_trials, double average);
+
+int*	get_indices			(const char* index_path);
+db_map	mk_db_map			(int* id_list, int file_size);
+dir_map	mk_dir_map			(int* id_list, int hash_mod);
+
 
 enum op_mode { OP_CONT, OP_RAND, OP_TRACE };
 enum rd_mode { RD_DIR, RD_DB };
 
 int main(int argc, char** argv)
 {
-	if ( argc < 7 || argc > 8 )
+	if ( argc < 7 || argc > 9 )
 	{
 		cerr << "Usage is: " << argv[0] << "<read mode> <operating mode> "
-			<< " <num trials> <directory where files are stored> "
-			<< "[<trace file> || <first index> <last index>] [<hash modulus> <db offset>]" << endl;
+			<< "<num trials> <id list> <file size> "
+			<< "<base dir || db file> [hash modulus] [trace file]" << endl;
 
 		return 1;
 	}
@@ -62,56 +66,47 @@ int main(int argc, char** argv)
 	}
 	
 	int		num_trials	= atoi(argv[3]);
-	
-	int		first, last;
-	int		hash_mod;
-	int		db_offset;
-	string	base_dir;
-	string	trace_path;
-	string	db_loc;
+	string	id_file		= string(argv[4]);
+	int		file_size	= atoi(argv[5]);
 
+	int		hash_mod;
+	string	base_dir;
+	string	db_loc;
+	string	trace_path;
+	
 	if ( read == RD_DIR )
 	{
-		hash_mod	= atoi(argv[4]);
-		base_dir	= string(argv[5]);
+		base_dir = string(argv[6]);
+		hash_mod = atoi(argv[7]);
 		
-		if ( mode != OP_TRACE )
-		{
-			first	= atoi(argv[6]);
-			last	= atoi(argv[7]);
-		}
-		
-		else
-		{
-			trace_path	= string(argv[6]);
-			db_offset	= 0;
-		}
+		if ( mode == OP_TRACE )
+			trace_path = string(argv[8]);
 	}
 	
 	else if ( read == RD_DB )
 	{
-		db_loc	= string(argv[4]);
+		db_loc	= string(argv[6]);
 		
-		if ( mode != OP_TRACE )
-		{
-			first	= atoi(argv[5]);
-			last	= atoi(argv[6]);
-		}
-		
-		else
-		{
-			trace_path	= string(argv[5]);
-			db_offset	= atoi(argv[6]);
-		}
+		if ( mode == OP_TRACE )
+			trace_path = string(argv[7]);
 	}
-
+	
+	int*	ids(get_indices(id_file.c_str());
+	
 	int*	indices;
 	
 	if ( mode != OP_TRACE )
-		indices	= get_cont_indices(first, last);
+		indices	= get_indices(id_file.c_str());
 		
 	else
-		indices	= get_trace_indices(trace_path.c_str(), db_offset);
+		indices	= get_indices(trace_path.c_str());
+	
+	db_map	mapper;
+	
+	if ( read == RD_DB )
+	{
+		mapper	= mk_db_map(ids, file_size);
+	}
 
 	double	times[num_trials];
 
@@ -124,10 +119,10 @@ int main(int argc, char** argv)
 		}
 		
 		if ( read == RD_DIR )
-			times[i]	= run_experiment_dir(indices, hash_mod, base_dir); 
+			times[i]	= run_experiment_dir(indices, hash_mod, file_size, base_dir); 
 		
 		else if ( read == RD_DB )
-			times[i]	= run_experiment_db(indices, base_dir); 
+			times[i]	= run_experiment_db(indices, file_size, db_loc);
 	}
 
 	delete indices;
@@ -140,38 +135,16 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-int* get_cont_indices(int first, int last)
+int* get_indices(const char* index_path)
 {
-	int* indices = new int[last - first + 1];
-
-	for ( int i = 0 ; i < last - first ; i++ )
-		indices[i] = first + i;
-
-	indices[last - first] = -1;
-
-	return indices;
-}
-
-int* get_rand_indices(int first, int last)
-{
-	int*		indices = get_cont_indices(first, last);
-	unsigned	seed = chrono::system_clock::now().time_since_epoch().count();
-
-	shuffle(indices, indices + (last - first), mt19937_64(seed));
-
-	return indices;
-}
-
-int* get_trace_indices(const char* trace_path, int offset)
-{
-	ifstream	trace(trace_path);
+	ifstream	index(index_path);
 	vector<int>	index_list;
 	int			cur_index;
 	int*		indices;
 
 	while (trace.good())
 	{
-		trace >> cur_index;
+		index >> cur_index;
 		index_list.push_back(cur_index - offset);
 	}
 
@@ -185,7 +158,23 @@ int* get_trace_indices(const char* trace_path, int offset)
 	return indices;
 }
 
-double run_experiment_dir(int* ordering, int hash_mod, string base_dir)
+db_map mk_db_map(int* id_list, int file_size)
+{
+	db_map mapper;
+	
+	int* cur_id = id_list;
+	int count = 0;
+	
+	while (*cur_id != -1)
+	{
+		mapper[*cur_id] = count * file_size;
+		count++;
+	}
+	
+	return mapper;
+}
+
+double run_experiment_dir(int* ordering, int hash_mod, int file_size, string base_dir)
 {
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
@@ -194,7 +183,7 @@ double run_experiment_dir(int* ordering, int hash_mod, string base_dir)
 	int				one;
 	int				ten;
 	int				hun;
-	char*			read_here = new char[FILE_SIZE];
+	char*			read_here = new char[file_size];
 	stringstream	strstream;
 
 	ts	= system_clock::now();
@@ -213,7 +202,7 @@ double run_experiment_dir(int* ordering, int hash_mod, string base_dir)
 
 		input_file.open(file_loc.c_str());
 
-		input_file.read(read_here, FILE_SIZE);
+		input_file.read(read_here, file_size);
 
 		input_file.close();
 	}
@@ -225,11 +214,11 @@ double run_experiment_dir(int* ordering, int hash_mod, string base_dir)
 	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
 }
 
-double run_experiment_db(int* ordering, int first, string db_loc)
+double run_experiment_db(int* ordering, db_map& mapper, int file_size, string db_loc)
 {
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
-	char*			read_here = new char[FILE_SIZE];
+	char*			read_here = new char[file_size];
 
 	ts	= system_clock::now();
 	
@@ -238,9 +227,9 @@ double run_experiment_db(int* ordering, int first, string db_loc)
 	// Read stuff
 	for ( int* i = ordering ; *i != -1 ; i++ )
 	{
-		input_file.seekg((*i - first) * FILE_SIZE, input_file.beg); 
+		input_file.seekg(mapper[*i], input_file.beg); 
 		
-		input_file.read(read_here, FILE_SIZE);
+		input_file.read(read_here, file_size);
 	}
 	
 	input_file.close();

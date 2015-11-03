@@ -50,9 +50,19 @@ list<unsigned> get_ids(const string& trace_loc)
         trace >> cur_id;
         id_list.push_back(cur_id);
 	}
-
-	id_list.unique();
+	
 	id_list.sort();
+	
+	auto i = id_list.begin();
+	
+	while ( i != id_list.end() )
+	{
+		if ( *i == *(next(i)) )
+			i = id_list.erase(i);
+		
+		else
+			i++;
+	}
 
 	return id_list;
 }
@@ -91,10 +101,8 @@ void out_dir(const list<unsigned>& id_list, const string& dir_out, int hash_mod,
 		{
 			str_stream >> temp_str;
 			file_loc += temp_str;
-			
-			cout << file_loc << endl;
 		
-			mkdir( file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH  )
+			mkdir( file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH  );
 		}
 		
 		str_stream >> temp_str;
