@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <cerrno>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <list>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -68,6 +70,7 @@ void out_dir(const list<unsigned>& id_list, const string& dir_out, int hash_mod,
     ofstream		out_here;
     stringstream	str_stream;
     string			file_loc;
+    string			temp_str;
 	char			out_me[file_size];
 
 	fill_n(out_me, file_size, 0);
@@ -78,11 +81,26 @@ void out_dir(const list<unsigned>& id_list, const string& dir_out, int hash_mod,
 		unsigned ones	= i_mod % 10;
 		unsigned tens	= (i_mod / 10) % 10;
 		unsigned huns	= (i_mod / 100) % 10;
-
-		str_stream << dir_out << '/' << huns << '/' << tens << '/' << ones << '/'
-			<< i << ".txt" << endl;
-		str_stream >> file_loc;
-
+		
+		file_loc = "";
+		
+		str_stream << dir_out << endl << '/' << huns << endl << '/' << tens
+			<< endl << '/' << ones << endl << '/' << i << ".txt" << endl;
+		
+		for ( i = 0 ; i < 4 ; i++ )
+		{
+			str_stream >> temp_str;
+			file_loc += temp_str;
+			
+			cout << file_loc << endl;
+		
+			if ( mkdir( file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH  ) == -1 )
+				perror("This bullshit occured");
+		}
+		
+		str_stream >> temp_str;
+		file_loc += temp_str;
+		
 		out_here.open(file_loc.c_str());
 		out_here.write(out_me, file_size);
 		out_here.close();
