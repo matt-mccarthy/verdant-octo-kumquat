@@ -14,8 +14,8 @@
 using namespace std;
 using namespace chrono;
 
-typedef unordered_map<int,int> db_map;
-typedef unordered_map<int,string> dir_map;
+typedef	unordered_map<int,int>		db_map;
+typedef	unordered_map<int,string>	dir_map;
 
 double	run_experiment_dir	(int* indices, dir_map& mapper, int file_size);
 double	run_experiment_db	(int* indices, db_map& mapper, int file_size, string db_loc);
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 			ct++;
 		}
 	}
-
+	
 	// Run the experiment
 	double	times[num_trials];
 
@@ -148,6 +148,7 @@ int main(int argc, char** argv)
 			unsigned	seed = chrono::system_clock::now().time_since_epoch().count();
 			shuffle(indices, indices + num_indices, mt19937_64(seed));
 		}
+		
 		
 		// Perform respective function
 		if ( read == RD_DIR )
@@ -197,10 +198,9 @@ db_map mk_db_map(int* id_list, int file_size)
 {
 	db_map mapper;
 	
-	int* cur_id = id_list;
 	int count = 0;
 	
-	while (*cur_id != -1)
+	for (int* cur_id = id_list ; *cur_id != -1 ; cur_id++)
 	{
 		// Generate the database offset of cur_id
 		mapper[*cur_id] = count * file_size;
@@ -214,7 +214,6 @@ dir_map mk_dir_map(int* id_list, int hash_mod, const string& base_dir)
 {
 	dir_map			mapper;
 	stringstream	strstream;
-	int* 			cur_id = id_list;
 	
 	int		mod;
 	int		one;
@@ -222,7 +221,7 @@ dir_map mk_dir_map(int* id_list, int hash_mod, const string& base_dir)
 	int		hun;
 	string	location;
 	
-	while (*cur_id != -1)
+	for (int* cur_id = id_list ; *cur_id != -1 ; cur_id++)
 	{
 		// Generate the file path of cur_id
 		mod	= *cur_id % hash_mod;
