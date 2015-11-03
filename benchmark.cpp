@@ -17,7 +17,7 @@ using namespace chrono;
 typedef unordered_map<int,int> db_map;
 typedef unordered_map<int,string> dir_map;
 
-double	run_experiment_dir	(int* indices, int hash_mod, int file_size, string base_dir);
+double	run_experiment_dir	(int* indices, dir_map& mapper, int file_size);
 double	run_experiment_db	(int* indices, db_map& mapper, int file_size, string db_loc);
 
 double	get_average			(double* times, int num_trials);
@@ -25,7 +25,7 @@ double	get_stddev			(double* times, int num_trials, double average);
 
 int*	get_indices			(const char* index_path);
 db_map	mk_db_map			(int* id_list, int file_size);
-dir_map	mk_dir_map			(int* id_list, int hash_mod);
+dir_map	mk_dir_map			(int* id_list, int hash_mod, const string& base_dir);
 
 
 enum op_mode { OP_CONT, OP_RAND, OP_TRACE };
@@ -33,6 +33,8 @@ enum rd_mode { RD_DIR, RD_DB };
 
 int main(int argc, char** argv)
 {
+	/// Start argument parsing
+	
 	if ( argc < 7 || argc > 9 )
 	{
 		cerr << "Usage is: " << argv[0] << "<read mode> <operating mode> "
@@ -42,6 +44,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	
+	// Read necessary arguments
 	rd_mode read;
 	
 	switch (atoi(argv[1]))
@@ -69,6 +72,7 @@ int main(int argc, char** argv)
 	string	id_file		= string(argv[4]);
 	int		file_size	= atoi(argv[5]);
 
+	// Read potential arguments
 	int		hash_mod;
 	string	base_dir;
 	string	db_loc;
@@ -91,42 +95,71 @@ int main(int argc, char** argv)
 			trace_path = string(argv[7]);
 	}
 	
-	int*	ids(get_indices(id_file.c_str());
+	/// End argument parsing
 	
+	// Store the ids in memory
+	int*	ids(get_indices(id_file.c_str()));
+	
+	// Map the ids to their locations on disk
+	db_map	db_mapper;
+	dir_map	dir_mapper;
+	
+	if ( read == RD_DB )
+		db_mapper	= mk_db_map(ids, file_size);
+	else
+		dir_mapper	= mk_dir_map(ids, hash_mod, base_dir);
+	
+	// Generate the necessary indices
 	int*	indices;
 	
 	if ( mode != OP_TRACE )
-		indices	= get_indices(id_file.c_str());
+	{
+		indices	= ids;
+		ids		= nullptr;
+	}
 		
 	else
-		indices	= get_indices(trace_path.c_str());
-	
-	db_map	mapper;
-	
-	if ( read == RD_DB )
 	{
-		mapper	= mk_db_map(ids, file_size);
+		indices	= get_indices(trace_path.c_str());
+		delete[] ids;
+	}
+	
+	// We need to calculate this if we're doing random read
+	int num_indices(0);
+	
+	if ( mode = OP_RAND )
+	{
+		int* ct = indices;
+		while (*ct != -1)
+		{
+			num_indices++;
+			ct++;
+		}
 	}
 
+	// Run the experiment
 	double	times[num_trials];
 
 	for ( int i = 0 ; i < num_trials ; i++)
 	{
+		// If we're random, shuffle
 		if ( mode == OP_RAND )
 		{
 			unsigned	seed = chrono::system_clock::now().time_since_epoch().count();
-			shuffle(indices, indices + (last - first), mt19937_64(seed));
+			shuffle(indices, indices + num_indices, mt19937_64(seed));
 		}
 		
+		// Perform respective function
 		if ( read == RD_DIR )
-			times[i]	= run_experiment_dir(indices, hash_mod, file_size, base_dir); 
+			times[i]	= run_experiment_dir(indices, dir_mapper, file_size); 
 		
 		else if ( read == RD_DB )
-			times[i]	= run_experiment_db(indices, file_size, db_loc);
+			times[i]	= run_experiment_db(indices, db_mapper, file_size, db_loc);
 	}
 
 	delete indices;
-
+	
+	// Do stats
 	double av(get_average(times, num_trials));
 	double sd(get_stddev(times, num_trials, av));
 
@@ -142,12 +175,14 @@ int* get_indices(const char* index_path)
 	int			cur_index;
 	int*		indices;
 
-	while (trace.good())
+	// Read all things in file
+	while (index.good())
 	{
 		index >> cur_index;
-		index_list.push_back(cur_index - offset);
+		index_list.push_back(cur_index);
 	}
 
+	// Turn it into an array terminated by -1
 	indices	= new int[index_list.size() + 1];
 
 	for ( unsigned i = 0 ; i < index_list.size() ; i++ )
@@ -167,6 +202,7 @@ db_map mk_db_map(int* id_list, int file_size)
 	
 	while (*cur_id != -1)
 	{
+		// Generate the database offset of cur_id
 		mapper[*cur_id] = count * file_size;
 		count++;
 	}
@@ -174,41 +210,56 @@ db_map mk_db_map(int* id_list, int file_size)
 	return mapper;
 }
 
-double run_experiment_dir(int* ordering, int hash_mod, int file_size, string base_dir)
+dir_map mk_dir_map(int* id_list, int hash_mod, const string& base_dir)
 {
+	dir_map			mapper;
+	stringstream	strstream;
+	int* 			cur_id = id_list;
+	
+	int		mod;
+	int		one;
+	int		ten;
+	int		hun;
+	string	location;
+	
+	while (*cur_id != -1)
+	{
+		// Generate the file path of cur_id
+		mod	= *cur_id % hash_mod;
+		one	= mod % 10;
+		ten	= (mod / 10) % 10;
+		hun	= (mod / 100) % 10;
+
+		strstream << base_dir << '/' << hun << '/' << ten << '/' << one << '/'
+			<< *cur_id << ".txt" << endl;
+		strstream >> location;
+		
+		mapper[*cur_id]	= location;
+	}
+	
+	return mapper;
+}
+
+double run_experiment_dir(int* ordering, dir_map& mapper, int file_size)
+{
+	// Set up
 	high_resolution_clock::time_point ts, tf;
 	ifstream		input_file;
-	string			file_loc;
-	int 			mod;
-	int				one;
-	int				ten;
-	int				hun;
 	char*			read_here = new char[file_size];
-	stringstream	strstream;
 
 	ts	= system_clock::now();
 
 	// Read stuff
 	for ( int* i = ordering ; *i != -1 ; i++ )
 	{
-		mod	= *i % hash_mod;
-		one	= mod % 10;
-		ten	= (mod / 10) % 10;
-		hun	= (mod / 100) % 10;
-
-		strstream << base_dir << '/' << hun << '/' << ten << '/' << one << '/'
-			<< *i << ".txt" << endl;
-		strstream >> file_loc;
-
-		input_file.open(file_loc.c_str());
-
+		input_file.open(mapper[*i]);
 		input_file.read(read_here, file_size);
-
 		input_file.close();
 	}
 
 	tf	= system_clock::now();
 
+	// Clean up
 	delete[] read_here;
 
 	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
