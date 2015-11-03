@@ -94,8 +94,7 @@ void out_dir(const list<unsigned>& id_list, const string& dir_out, int hash_mod,
 			
 			cout << file_loc << endl;
 		
-			if ( mkdir( file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH  ) == -1 )
-				perror("This bullshit occured");
+			mkdir( file_loc.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH  )
 		}
 		
 		str_stream >> temp_str;
