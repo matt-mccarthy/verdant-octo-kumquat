@@ -17,7 +17,7 @@ class cache
 				unsigned num_lines, unsigned num_threads);
 		~cache();
 
-		unsigned get_num_fetches();
+		int get_num_fetches();
 
 		char* operator[](int entry_id);
 
@@ -28,7 +28,9 @@ class cache
 				entry() {}
 				entry(int offset);
 				entry&	operator=(entry&& in);
-				bool	operator<(entry& in);
+				bool	operator<=(entry& in);
+				void	del();
+				bool	is_in_cache();
 				~entry();
 
 				int					db_offset;
@@ -54,7 +56,7 @@ class cache
 		void read();
 		void add_to_db(int id);
 		void add_to_queue(int id);
-		void fetch(int offset, char* put_here);
+		void fetch_from_disk(int offset, char* put_here);
 		void garbage_collect();
 
 		std::unordered_map<int, entry>	cache_map;		// Maps index->entry
