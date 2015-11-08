@@ -11,7 +11,6 @@
 #include "cache.h"
 
 using std::atomic;
-using std::atomic_bool;
 using std::chrono::duration;
 using std::chrono::duration_cast;
 using std::chrono::system_clock;
