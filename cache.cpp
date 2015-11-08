@@ -21,6 +21,7 @@ using std::priority_queue;
 using std::queue;
 using std::string;
 using std::time_t;
+using std::this_thread::yield;
 using std::thread;
 using std::unique_lock;
 using std::unordered_map;
@@ -35,18 +36,16 @@ time_t get_time()
 
 cache::cache(db_map& mapper, string& db_location,
 				unsigned entry_length, unsigned entries_per_line,
-				unsigned num_lines, unsigned num_threads)
-			: db_file(db_location), entry_count(0),
+				unsigned num_lines)
+			: db_file(db_location), entry_count(0), stop(false), fetch_count(0),
 				entry_size(entry_length), line_length(entries_per_line),
-				line_count(num_lines), thread_count(num_threads),
-				cache_size(line_count*line_length),
-				stop(false), fetch_count(0)
+				line_count(num_lines), cache_size(line_count*line_length)
 {
 	// Initialize the cache map
-    for (auto i = mapper.begin() ; i != mapper.end() ; i++)
-    	cache_map[i->first] = entry(i->second);
+	for (auto i = mapper.begin() ; i != mapper.end() ; i++)
+		cache_map[i->first] = entry(i->second);
 
-	reader = thread{read, this};
+	reader = thread(&cache::read, this);
 }
 
 cache::~cache()
@@ -59,7 +58,7 @@ cache::~cache()
 }
 
 cache::entry::entry(int offset) : db_offset(offset), memory(nullptr),
-									accessed(get_time()) {}
+									accessed(get_time()), loaded(false) {}
 
 cache::entry::~entry()
 {
@@ -70,8 +69,9 @@ cache::entry::~entry()
 cache::entry& cache::entry::operator=(entry&& in)
 {
 	db_offset	= in.db_offset;
-	memory		= in.memory.load(std::memory_order_seq_cst);
+	memory		= in.memory;
 	accessed	= in.accessed;
+	loaded		= in.loaded;
 
 	return *this;
 }
@@ -107,12 +107,13 @@ void cache::entry::del()
 	{
 		delete[] memory;
 		memory = nullptr;
+		loaded = false;
 	}
 }
 
 bool cache::entry::is_in_cache()
 {
-	return !(memory == nullptr);
+	return loaded;
 }
 
 bool cache::query::operator()(const query& a, const query& b)
@@ -131,8 +132,9 @@ char* cache::operator[](int entry_id)
 	entry* cur_entry = &cache_map[entry_id];
 
 	cur_entry->lock.lock();
+
 	// If the entry is not in cache
-	if (cur_entry->is_in_cache())
+	if (!(cur_entry->is_in_cache()))
 	{
 		cur_entry->lock.unlock();
 		add_to_queue(entry_id);
@@ -165,7 +167,7 @@ void cache::read()
 
 			// Get next thing off of the queue
 			queue_lock.lock();
-
+			
 			if (!read_queue.empty())
 			{
 				id = read_queue.top().id;
@@ -197,16 +199,17 @@ void cache::add_to_db(int id)
 	cur_entry -> lock.lock();
 
 	// If the entry is not in cache
-	if (cur_entry -> is_in_cache())
+	if (!(cur_entry -> is_in_cache()))
 	{
 		// If the cache is full
 		if (entry_count == cache_size)
 			garbage_collect();
 
 		// Fetch an entry from disk
-		char* new_block = new char[entry_size];
-		cur_entry -> memory = new_block;
+		char* new_block		= new char[entry_size];
+		cur_entry -> memory	= new_block;
 		fetch_from_disk(cur_entry -> db_offset, new_block);
+		cur_entry ->loaded	= true;
 
 		entry_count++;
 	}
@@ -221,6 +224,7 @@ void cache::add_to_db(int id)
 
 void cache::add_to_queue(int id)
 {
+	fetch_count++;
 	queue_lock.lock();
 
 	// Enqueue the current id with immediate priority
@@ -228,12 +232,14 @@ void cache::add_to_queue(int id)
 	sleep.notify_all();
 	queue_lock.unlock();
 
+	yield();
+
 	// Enqueue the next few ids with normal priority
 	queue_lock.lock();
 	auto itr = next(cache_map.find(id));
-	for (unsigned i = 1 ; i < line_length ; i++)
+	for (unsigned i = 1 ; i < line_length && itr != cache_map.end() ; i++)
 	{
-		if (itr->second.is_in_cache())
+		if (!(itr->second.is_in_cache()))
 			read_queue.push(query(itr->first, false));
 
 		else
@@ -249,22 +255,23 @@ void cache::garbage_collect()
 {
 	// Find the first entry in cache
 	queue<entry*> oldest;
-
-	auto in_cache(cache_map.begin());
-
-	while (!(in_cache->second.is_in_cache()))
-		in_cache++;
-
-	oldest.push(&(in_cache->second));
+	entry* dummy = new entry(0);
+	dummy->lock.lock();
+	
+	oldest.push(dummy);
 
 	// Populate the queue
-	for (auto i(next(in_cache)) ; i != cache_map.end() ; i++)
+	for (auto i(next(cache_map.begin())) ; i != cache_map.end() ; i++)
 	{
 		if (i -> second <= *(oldest.front()))
-			oldest.push(&(i->second));
+			if (i -> second.lock.try_lock())
+				oldest.push(&(i->second));
 
 		if (oldest.size() > line_length)
+		{
+			oldest.front() -> lock.unlock();
 			oldest.pop();
+		}
 	}
 
 	// Delete everything in the queue from cache
@@ -272,18 +279,20 @@ void cache::garbage_collect()
 	while (!oldest.empty())
 	{
 		i = oldest.front();
-		i->lock.lock();
 		i->del();
 		i->lock.unlock();
 		oldest.pop();
-		entry_count--;
+		
+		if (i != dummy)
+			entry_count--;
 	}
 	i = nullptr;
+
+	delete dummy;
 }
 
 void cache::fetch_from_disk(int offset, char* put_here)
 {
 	db_file.seekg(offset, db_file.beg);
 	db_file.read(put_here, entry_size);
-	fetch_count++;
 }

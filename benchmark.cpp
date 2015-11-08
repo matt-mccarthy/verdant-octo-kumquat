@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "cache.h"
@@ -18,16 +19,24 @@ using namespace chrono;
 
 typedef	unordered_map<int,int>		db_map;
 typedef	unordered_map<int,string>	dir_map;
+typedef	pair<double, unsigned>		c_res;
 
-double	run_experiment_dir	(int* indices, dir_map& mapper, int file_size);
-double	run_experiment_db	(int* indices, db_map& mapper, int file_size, string& db_loc);
+double	run_experiment_dir		(int* indices, dir_map& mapper, int file_size);
+double	run_experiment_db		(int* indices, db_map& mapper, int file_size,
+								string& db_loc);
+c_res	run_experiment_cache	(int* ordering, db_map& mapper, int file_size,
+								string& db_loc, unsigned line_size,
+								unsigned lines_stored);
 
-double	get_average			(double* times, int num_trials);
-double	get_stddev			(double* times, int num_trials, double average);
+template<typename T>
+double	get_average				(T* times, int num_trials);
+template<typename T>
+double	get_stddev				(T* times, int num_trials, double average);
 
-int*	get_indices			(const char* index_path);
-db_map	mk_db_map			(int* id_list, int file_size);
-dir_map	mk_dir_map			(int* id_list, int hash_mod, const string& base_dir);
+int*	get_indices				(const char* index_path);
+db_map	mk_db_map				(int* id_list, int file_size);
+dir_map	mk_dir_map				(int* id_list, int hash_mod,
+									const string& base_dir);
 
 
 enum op_mode { OP_CONT, OP_RAND, OP_TRACE };
@@ -37,18 +46,20 @@ int main(int argc, char** argv)
 {
 	/// Start argument parsing
 
-	if ( argc < 7 || argc > 9 )
+	if ( argc < 7 || argc > 11 )
 	{
 		cerr << "Usage is: " << argv[0] << "<read mode> <operating mode> "
 			<< "<num trials> <id list> <file size> "
-			<< "<base dir || db file> [hash modulus] [trace file]" << endl;
+			<< "<base dir || db file> [hash modulus] [trace file] "
+			<< "[<cache> [<line length> <num lines>]]" << endl;
 
 		return 1;
 	}
 
 	// Read necessary arguments
-	rd_mode read;
+	rd_mode read;	// Read mode
 
+	// Determine read mode
 	switch (atoi(argv[1]))
 	{
 		case 0:		read = RD_DIR;		break;
@@ -58,8 +69,9 @@ int main(int argc, char** argv)
 			return 1;
 	}
 
-	op_mode	mode;
+	op_mode	mode;	// Operation mode
 
+	// Determine operation mode
 	switch (atoi(argv[2]))
 	{
 		case 0:		mode = OP_CONT;		break;
@@ -70,31 +82,46 @@ int main(int argc, char** argv)
 			return 1;
 	}
 
-	int		num_trials	= atoi(argv[3]);
-	string	id_file		= string(argv[4]);
-	int		file_size	= atoi(argv[5]);
+	int		num_trials	= atoi(argv[3]);	// Number of trials
+	string	id_file		= string(argv[4]);	// List of all entry ids
+	int		file_size	= atoi(argv[5]);	// Length of all files/entries
 
 	// Read potential arguments
-	int		hash_mod;
-	string	base_dir;
-	string	db_loc;
-	string	trace_path;
+	int			at_arg(6);
+	
+	int			hash_mod;	// Modulus for directory hash
+	string		base_dir;	// Directory where RD_DIR files are stored
+	string		db_loc;		// Location of the RD_DB file
+	string		trace_path;	// Location of the trace for OP_TRACE
+	
+	bool		use_cache;	// Whether or not we're using cache
+	unsigned	line_len;	// Length of a cache line
+	unsigned	num_lines;	// Number of lines to store
 
 	if ( read == RD_DIR )
 	{
-		base_dir = string(argv[6]);
-		hash_mod = atoi(argv[7]);
+		base_dir = string(argv[at_arg++]);
+		hash_mod = atoi(argv[at_arg++]);
 
 		if ( mode == OP_TRACE )
-			trace_path = string(argv[8]);
+			trace_path = string(argv[at_arg++]);
 	}
 
 	else if ( read == RD_DB )
 	{
-		db_loc	= string(argv[6]);
+		db_loc	= string(argv[at_arg++]);
 
 		if ( mode == OP_TRACE )
-			trace_path = string(argv[7]);
+			trace_path = string(argv[at_arg++]);
+
+		// Use the cache?
+		use_cache = atoi(argv[at_arg++]);
+
+		if (use_cache) 
+		{
+			line_len	= atoi(argv[at_arg++]);
+			num_lines	= atoi(argv[at_arg++]);
+		}
 	}
 
 	/// End argument parsing
@@ -129,7 +156,7 @@ int main(int argc, char** argv)
 	// We need to calculate this if we're doing random read
 	int num_indices(0);
 
-	if ( mode = OP_RAND )
+	if ( mode == OP_RAND )
 	{
 		int* ct = indices;
 		while (*ct != -1)
@@ -140,7 +167,8 @@ int main(int argc, char** argv)
 	}
 
 	// Run the experiment
-	double	times[num_trials];
+	double		times[num_trials];
+	unsigned	misses[num_trials];
 
 	for ( int i = 0 ; i < num_trials ; i++)
 	{
@@ -151,22 +179,42 @@ int main(int argc, char** argv)
 			shuffle(indices, indices + num_indices, mt19937_64(seed));
 		}
 
-
 		// Perform respective function
 		if ( read == RD_DIR )
 			times[i]	= run_experiment_dir(indices, dir_mapper, file_size);
 
 		else if ( read == RD_DB )
-			times[i]	= run_experiment_db(indices, db_mapper, file_size, db_loc);
+		{
+			if (use_cache)
+			{
+				c_res res(run_experiment_cache(indices, db_mapper, file_size,
+							db_loc, line_len, num_lines));
+				times[i]	= res.first;
+				misses[i]	= res.second;
+			}
+			else
+				times[i]	= run_experiment_db(indices, db_mapper, file_size,
+												db_loc);
+		}
 	}
 
 	delete indices;
 
 	// Do stats
-	double av(get_average(times, num_trials));
-	double sd(get_stddev(times, num_trials, av));
+	double av(get_average<double>(times, num_trials));
+	double sd(get_stddev<double>(times, num_trials, av));
 
-	cout << av << "\t" << sd << endl;
+	cout << av << "\t" << sd;
+	
+	if (use_cache)
+	{
+		av	= get_average<unsigned>(misses, num_trials);
+		sd	= get_stddev<unsigned>(misses, num_trials, av);
+		
+		cout << "\t" << av << "\t" << sd;
+	}
+	
+	cout << endl;
 
 	return 0;
 }
@@ -179,19 +227,19 @@ int* get_indices(const char* index_path)
 	int*		indices;
 
 	// Read all things in file
-	while (index.good())
+	while (!index.eof())
 	{
 		index >> cur_index;
 		index_list.push_back(cur_index);
 	}
 
 	// Turn it into an array terminated by -1
-	indices	= new int[index_list.size() + 1];
+	indices	= new int[index_list.size()];
 
 	for ( unsigned i = 0 ; i < index_list.size() ; i++ )
 		indices[i] = index_list[i];
 
-	indices[index_list.size()] = -1;
+	indices[index_list.size()-1] = -1;
 
 	return indices;
 }
@@ -293,41 +341,44 @@ double run_experiment_db(int* ordering, db_map& mapper, int file_size, string& d
 	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
 }
 
-double run_experiment_cache(int* ordering, db_map& mapper, int file_size,
+c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 							string& db_loc, unsigned line_size,
-							unsigned lines_stored, unsigned num_threads)
+							unsigned lines_stored)
 {
 	high_resolution_clock::time_point ts, tf;
-	cache db(mapper, db_loc, file_size, line_size, lines_stored, num_threads);
+	cache db(mapper, db_loc, file_size, line_size, lines_stored);
 
 	ts	= system_clock::now();
 
-	for (int* i = ordering ; *i != 1 ; i++)
+	for (int* i = ordering ; *i != -1 ; i++)
 		db[*i];
 
 	tf	= system_clock::now();
 
-	cout << db.get_num_fetches();
+	unsigned	misses(db.get_num_fetches());
+	double		time((duration_cast< duration<double> >(tf - ts)).count()*1000.0);
 
-	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
+	return c_res(time, misses);
 }
 
-double get_average(double* times, int num_trials)
+template <typename T>
+double get_average(T* set, int num_trials)
 {
 	double sum(0.0);
 
 	for (int i = 0 ; i < num_trials ; i++)
-		sum += times[i];
+		sum += set[i];
 
 	return sum / num_trials;
 }
 
-double get_stddev(double* times, int num_trials, double average)
+template <typename T>
+double get_stddev(T* set, int num_trials, double average)
 {
 	double stddev(0.0);
 
 	for (int i = 0 ; i < num_trials ; i++ )
-		stddev += (times[i] - average)*(times[i] - average);
+		stddev += (average - set[i])*(average - set[i]);
 
 	stddev /= num_trials;
 

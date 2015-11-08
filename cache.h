@@ -14,7 +14,7 @@ class cache
 	public:
 		cache(std::unordered_map<int,int>& mapper, std::string& db_location,
 				 unsigned entry_length, unsigned entries_per_line,
-				unsigned num_lines, unsigned num_threads);
+				unsigned num_lines);
 		~cache();
 
 		int get_num_fetches();
@@ -34,7 +34,8 @@ class cache
 				~entry();
 
 				int					db_offset;
-				std::atomic<char*>	memory;
+				char*				memory;
+				bool				loaded;
 				std::time_t			accessed;
 				std::mutex			lock;
 		};
@@ -64,7 +65,6 @@ class cache
 		const unsigned					entry_size;		// Size of each entry
 		const unsigned					line_length;	// Entries per line
 		const unsigned					line_count;		// Num lines stored
-		const unsigned					thread_count;	// Num threads
 		const unsigned					cache_size;		// Max entries in cache
 		std::atomic_int					entry_count;	// Num entries in cache
 		std::atomic_int					fetch_count;	// Number of fetches
