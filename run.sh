@@ -1,12 +1,13 @@
-trace="trace2.txt"
-mod="250"
-fsize="14336"
-numtrials="2"
+# Run: sh run.sh trace.txt 250 14336 5 75 200
+trace=$1
+mod=$2
+fsize=$3
+numtrials=$4
+linelen=$5
+numlines=$6
 idlist="id_list.txt"
 db="db.txt"
 dbdir="db-files"
-linelen="5"
-numlines="5"
 
 ./db-gen $trace $mod $fsize $idlist $db $dbdir
 
