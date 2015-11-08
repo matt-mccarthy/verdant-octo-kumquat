@@ -58,7 +58,7 @@ cache::~cache()
 }
 
 cache::entry::entry(int offset) : db_offset(offset), memory(nullptr),
-									accessed(get_time()), loaded(false) {}
+									accessed(get_time()) {}
 
 cache::entry::~entry()
 {
@@ -71,7 +71,6 @@ cache::entry& cache::entry::operator=(entry&& in)
 	db_offset	= in.db_offset;
 	memory		= in.memory;
 	accessed	= in.accessed;
-	loaded		= in.loaded;
 
 	return *this;
 }
@@ -107,13 +106,12 @@ void cache::entry::del()
 	{
 		delete[] memory;
 		memory = nullptr;
-		loaded = false;
 	}
 }
 
 bool cache::entry::is_in_cache()
 {
-	return loaded;
+	return (bool)memory;
 }
 
 bool cache::query::operator()(const query& a, const query& b)
@@ -209,7 +207,6 @@ void cache::add_to_db(int id)
 		char* new_block		= new char[entry_size];
 		cur_entry -> memory	= new_block;
 		fetch_from_disk(cur_entry -> db_offset, new_block);
-		cur_entry ->loaded	= true;
 
 		entry_count++;
 	}

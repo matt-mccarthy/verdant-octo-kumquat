@@ -1,15 +1,25 @@
-./db-gen trace2.txt 250 14336 id_list.txt db.txt db-files
+trace="trace2.txt"
+mod="250"
+fsize="14336"
+numtrials="2"
+idlist="id_list.txt"
+db="db.txt"
+dbdir="db-files"
+linelen="5"
+numlines="5"
 
-echo $(./benchmark 0 0 2 id_list.txt 14336 db-files 250)
-echo $(./benchmark 0 1 2 id_list.txt 14336 db-files 250)
-echo $(./benchmark 0 2 2 id_list.txt 14336 db-files 250 trace2.txt)
+./db-gen $trace $mod $fsize $idlist $db $dbdir
 
-echo $(./benchmark 1 0 2 id_list.txt 14336 db.txt 0)
-echo $(./benchmark 1 1 2 id_list.txt 14336 db.txt 0)
-echo $(./benchmark 1 2 2 id_list.txt 14336 db.txt trace2.txt 0)
+./benchmark 0 0 $numtrials $idlist $fsize $dbdir $mod
+./benchmark 0 1 $numtrials $idlist $fsize $dbdir $mod
+./benchmark 0 2 $numtrials $idlist $fsize $dbdir $mod $trace
 
-echo $(./benchmark 1 0 2 id_list.txt 14336 db.txt 1 5 5)
-echo $(./benchmark 1 1 2 id_list.txt 14336 db.txt 1 5 5)
-echo $(./benchmark 1 2 2 id_list.txt 14336 db.txt trace2.txt 1 5 5)
+./benchmark 1 0 $numtrials $idlist $fsize $db 0
+./benchmark 1 1 $numtrials $idlist $fsize $db 0
+./benchmark 1 2 $numtrials $idlist $fsize $db $trace 0
 
-rm -rf db-files db.txt id_list.txt
+./benchmark 1 0 $numtrials $idlist $fsize $db 1 $linelen $numlines
+./benchmark 1 1 $numtrials $idlist $fsize $db 1 $linelen $numlines
+./benchmark 1 2 $numtrials $idlist $fsize $db $trace 1 $linelen $numlines
+
+rm -rf $dbdir $db $idlist

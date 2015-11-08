@@ -35,7 +35,6 @@ class cache
 
 				int					db_offset;
 				char*				memory;
-				bool				loaded;
 				std::time_t			accessed;
 				std::mutex			lock;
 		};
