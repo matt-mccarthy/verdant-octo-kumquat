@@ -153,10 +153,10 @@ int main(int argc, char** argv)
 		delete[] ids;
 	}
 
-	// We need to calculate this if we're doing random read
+	// We need to calculate this if we're doing random read or using cache
 	int num_indices(0);
 
-	if ( mode == OP_RAND )
+	if ( mode == OP_RAND || use_cache )
 	{
 		int* ct = indices;
 		while (*ct != -1)
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
 	// Run the experiment
 	double		times[num_trials];
-	unsigned	misses[num_trials];
+	double		misses[num_trials];
 
 	for ( int i = 0 ; i < num_trials ; i++)
 	{
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 				c_res res(run_experiment_cache(indices, db_mapper, file_size,
 							db_loc, line_len, num_lines));
 				times[i]	= res.first;
-				misses[i]	= res.second;
+				misses[i]	= (double)res.second/num_indices;
 			}
 			else
 				times[i]	= run_experiment_db(indices, db_mapper, file_size,
@@ -208,8 +208,8 @@ int main(int argc, char** argv)
 	
 	if (use_cache)
 	{
-		av	= get_average<unsigned>(misses, num_trials);
-		sd	= get_stddev<unsigned>(misses, num_trials, av);
+		av	= get_average<double>(misses, num_trials);
+		sd	= get_stddev<double>(misses, num_trials, av);
 		
 		cout << "\t" << av << "\t" << sd;
 	}

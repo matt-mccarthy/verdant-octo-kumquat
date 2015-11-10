@@ -245,6 +245,8 @@ void cache::add_to_queue(int id)
 	}
 	sleep.notify_all();
 	queue_lock.unlock();
+
+	yield();
 }
 
 void cache::garbage_collect()
