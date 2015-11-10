@@ -19,8 +19,12 @@ dbdir="db-files"
 ./benchmark 1 1 $numtrials $idlist $fsize $db 0
 ./benchmark 1 2 $numtrials $idlist $fsize $db $trace 0
 
-./benchmark 1 0 $numtrials $idlist $fsize $db 1 $linelen $numlines
-./benchmark 1 1 $numtrials $idlist $fsize $db 1 $linelen $numlines
-./benchmark 1 2 $numtrials $idlist $fsize $db $trace 1 $linelen $numlines
+./benchmark 1 0 $numtrials $idlist $fsize $db 1
+./benchmark 1 1 $numtrials $idlist $fsize $db 1
+./benchmark 1 2 $numtrials $idlist $fsize $db $trace 1
+
+./benchmark 1 0 $numtrials $idlist $fsize $db 2 $linelen $numlines
+./benchmark 1 1 $numtrials $idlist $fsize $db 2 $linelen $numlines
+./benchmark 1 2 $numtrials $idlist $fsize $db $trace 2 $linelen $numlines
 
 rm -rf $dbdir $db $idlist

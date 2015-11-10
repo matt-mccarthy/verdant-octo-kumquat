@@ -123,6 +123,14 @@ int cache::get_num_fetches()
 	return fetch_count;
 }
 
+void cache::clear()
+{
+	queue_lock.lock();
+	while (!read_queue.empty())
+		read_queue.pop();
+	queue_lock.unlock();
+}
+
 char* cache::operator[](int entry_id)
 {
 	// Get a pointer to the right entry

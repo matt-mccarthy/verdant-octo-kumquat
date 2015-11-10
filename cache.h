@@ -20,6 +20,7 @@ class cache
 		int get_num_fetches();
 
 		char* operator[](int entry_id);
+		void clear();
 
 	private:
 		class entry
@@ -48,9 +49,9 @@ class cache
 					this -> id	= id;
 					immediate	= now;
 				}
-                int		id;
-                bool	immediate;
-                bool	operator()(const query& a, const query& b);
+				int		id;
+				bool	immediate;
+				bool	operator()(const query& a, const query& b);
 		};
 
 		void read();
