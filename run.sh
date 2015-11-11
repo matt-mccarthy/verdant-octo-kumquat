@@ -20,7 +20,7 @@ db_cache="2"
 
 ./db-gen $trace $mod $fsize $idlist $db $dbdir
 
-echo "Done generating"
+#echo "Done generating"
 
 ./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
 ./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod

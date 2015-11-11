@@ -3,6 +3,7 @@
 
 #include <ctime>
 #include <fstream>
+#include <list>
 #include <queue>
 #include <string>
 #include <unordered_map>
@@ -30,13 +31,14 @@ class cache_seq
 		void garbage_collect();
 
 		std::unordered_map<int, entry_seq>	cache_map;		// Maps index->entry
+		std::list<entry_seq*>				cache_cont;		// Things in cache
 		std::ifstream						db_file;		// The database
 		const unsigned						entry_size;		// Size of each entry
 		const unsigned						line_length;	// Entries per line
 		const unsigned						line_count;		// Num lines stored
 		const unsigned						cache_size;		// Max entries in cache
-		int									entry_count;	// Num entries in cache
 		int									fetch_count;	// Number of fetches
+		int									entry_count;	// Number of things in cache
 };
 
 #endif

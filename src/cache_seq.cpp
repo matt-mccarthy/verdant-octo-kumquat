@@ -20,7 +20,7 @@ std::time_t get_time_s()
 
 cache_seq::cache_seq(db_map& mapper, unsigned entry_length, unsigned entries_per_line,
 				unsigned num_lines)
-			: entry_count(0), fetch_count(0),
+			: fetch_count(0), entry_count(0),
 				entry_size(entry_length), line_length(entries_per_line),
 				line_count(num_lines), cache_size(line_count*line_length)
 {
@@ -60,7 +60,12 @@ char* cache_seq::operator[](int entry_id)
 		add_to_queue(entry_id);
 
 	else
+	{
 		cur_entry->accessed = get_time_s();
+		cache_cont.erase(cur_entry->spot);
+		cache_cont.push_back(cur_entry);
+		cur_entry -> spot = prev(cache_cont.end());
+	}
 
 	char* location(cur_entry->memory);
 
@@ -74,25 +79,19 @@ void cache_seq::add_to_db(int id)
 	// Get a pointer to the right entry
 	entry_seq* cur_entry = &cache_map[id];
 
-	// If the entry is not in cache
-	if (!(cur_entry -> memory))
-	{
-		// If the cache is full
-		if (entry_count >= cache_size);
-			//garbage_collect();
+	// If the cache is full
+	if (get_size() >= cache_size)
+		garbage_collect();
 
-		// Fetch an entry from disk
-		char* new_block			= new char[entry_size];
-		cur_entry -> memory		= new_block;
-		fetch_from_disk(cur_entry -> db_offset, new_block);
+	// Fetch an entry from disk
+	char* new_block			= new char[entry_size];
+	cur_entry -> memory		= new_block;
+	fetch_from_disk(cur_entry -> db_offset, new_block);
 
-		entry_count++;
-		new_block = nullptr;
-	}
-
-	// If it is, give it a new access time
-	else
-		cur_entry ->accessed = get_time_s();
+	new_block = nullptr;
+	cache_cont.push_back(cur_entry);
+	cur_entry -> spot = prev(cache_cont.end());
+	entry_count++;
 
 	cur_entry = nullptr;
 }
@@ -120,44 +119,53 @@ void cache_seq::add_to_queue(int id)
 
 void cache_seq::garbage_collect()
 {
-	// Find the first entry in cache
-	queue<entry_seq*> oldest;
+//	// Find the first entry in cache
+//	queue<entry_seq*> oldest;
 
-	entry_seq* dummy = new entry_seq(0);
-	entry_count++;
+//	entry_seq* dummy = new entry_seq(0);
+//	entry_count++;
 
-	oldest.push(dummy);
-	// Populate the queue
-	for (auto i(cache_map.begin()) ; i != cache_map.end() ; i++)
+//	oldest.push(dummy);
+//	// Populate the queue
+//	for (auto i(cache_map.begin()) ; i != cache_map.end() ; i++)
+//	{
+//		entry_seq* b = oldest.back();
+//		
+//		if (i -> second.memory != nullptr && b -> memory != nullptr)
+//			if (i -> second.accessed <= b->accessed )
+//				oldest.push(&(i->second));
+
+//		b = nullptr;
+
+//		if (oldest.size() > line_length)
+//			oldest.pop();
+//	}
+
+//	// Delete everything in the queue from cache
+//	entry_seq* i;
+//	while (!oldest.empty())
+//	{
+//		i = oldest.front();
+//		i->del();
+//		oldest.pop();
+//	
+//		entry_count--;
+//	}
+//	i = nullptr;
+//	
+//	if (dummy -> memory)
+//		entry_count--;
+
+//	delete dummy;
+
+	for (int i = 0 ; i < line_length && !cache_cont.empty(); i++)
 	{
-		entry_seq* b = oldest.back();
-		
-		if (i -> second.memory != nullptr && b -> memory != nullptr)
-			if (i -> second.accessed <= b->accessed )
-				oldest.push(&(i->second));
-
-		b = nullptr;
-
-		if (oldest.size() > line_length)
-			oldest.pop();
+		entry_seq* f(cache_cont.front());
+		f ->del();
+		cache_cont.pop_front();
 	}
-
-	// Delete everything in the queue from cache
-	entry_seq* i;
-	while (!oldest.empty())
-	{
-		i = oldest.front();
-		i->del();
-		oldest.pop();
 	
-		entry_count--;
-	}
-	i = nullptr;
-	
-	if (dummy -> memory)
-		entry_count--;
-
-	delete dummy;
+	entry_count -= line_length;
 }
 
 void cache_seq::fetch_from_disk(int offset, char* put_here)

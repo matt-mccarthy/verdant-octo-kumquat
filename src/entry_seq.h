@@ -1,6 +1,6 @@
 #include <atomic>
 #include <ctime>
-#include <mutex>
+#include <list>
 
 class entry_seq
 {
@@ -12,7 +12,8 @@ class entry_seq
 		bool	is_in_cache();
 		~entry_seq();
 
-		int			db_offset;
-		char*		memory;
-		std::time_t	accessed;
+		int								db_offset;
+		char*							memory;
+		std::time_t						accessed;
+		std::list<entry_seq*>::iterator	spot;
 };

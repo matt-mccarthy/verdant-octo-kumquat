@@ -16,8 +16,6 @@
 
 #include "src/test_suite.hpp"
 
-//#define DEBUG
-
 //using namespace tests;
 using namespace std;
 

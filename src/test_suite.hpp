@@ -1,6 +1,8 @@
 #ifndef TEST_SUITE_CPP
 #define TEST_SUITE_CPP
 
+//#define DEBUG
+
 #include <chrono>
 #include <iostream>
 #include <fstream>
@@ -135,7 +137,7 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 							unsigned lines_stored)
 {
 	high_resolution_clock::time_point ts, tf;
-	cache db(mapper, file_size, line_size, lines_stored);
+	cache_seq db(mapper, file_size, line_size, lines_stored);
 	int req_ctr(0);
 	int prev_fetch(0);
 

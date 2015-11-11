@@ -8,7 +8,8 @@ using std::time_t;
 
 entry_seq::entry_seq(int offset) 
 	: db_offset(offset), memory(nullptr),
-		accessed(system_clock::to_time_t(system_clock::now())) {}
+		accessed(system_clock::to_time_t(system_clock::now())), spot(nullptr)
+{}
 
 entry_seq::~entry_seq()
 {
@@ -21,7 +22,7 @@ entry_seq& entry_seq::operator=(entry_seq&& in)
 	db_offset	= in.db_offset;
 	memory		= in.memory;
 	accessed	= in.accessed;
-
+	spot		= in.spot;
 	return *this;
 }
 
@@ -30,7 +31,7 @@ void entry_seq::del()
 	if (is_in_cache())
 	{
 		delete[] memory;
-		memory = nullptr;
+		memory	= nullptr;
 	}
 }
 
