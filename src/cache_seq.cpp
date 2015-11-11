@@ -78,8 +78,8 @@ void cache_seq::add_to_db(int id)
 	if (!(cur_entry -> memory))
 	{
 		// If the cache is full
-		if (entry_count >= cache_size)
-			garbage_collect();
+		if (entry_count >= cache_size);
+			//garbage_collect();
 
 		// Fetch an entry from disk
 		char* new_block			= new char[entry_size];
@@ -103,19 +103,19 @@ void cache_seq::add_to_queue(int id)
 
 	add_to_db(id);
 
-	// Enqueue the next few ids with normal priority
-	auto itr = cache_map.find(id);
-	itr++;
-	for (unsigned i = 1 ; i < line_length && itr != cache_map.end() ; i++)
-	{
-		if ( !(itr->second.is_in_cache()) )
-			add_to_db(itr->first);
+//	// Enqueue the next few ids with normal priority
+//	auto itr = cache_map.find(id);
+//	itr++;
+//	for (unsigned i = 1 ; i < line_length && itr != cache_map.end() ; i++)
+//	{
+//		if ( !(itr->second.is_in_cache()) )
+//			add_to_db(itr->first);
 
-		else
-			itr->second.accessed = get_time_s();
+//		else
+//			itr->second.accessed = get_time_s();
 
-		itr++;
-	}
+//		itr++;
+//	}
 }
 
 void cache_seq::garbage_collect()
@@ -130,13 +130,13 @@ void cache_seq::garbage_collect()
 	// Populate the queue
 	for (auto i(cache_map.begin()) ; i != cache_map.end() ; i++)
 	{
-		entry_seq* f = oldest.front();
+		entry_seq* b = oldest.back();
 		
-		if (i -> second.memory != nullptr && f -> memory != nullptr)
-			if (i -> second.accessed <= (*oldest.front()).accessed )
+		if (i -> second.memory != nullptr && b -> memory != nullptr)
+			if (i -> second.accessed <= b->accessed )
 				oldest.push(&(i->second));
 
-		f = nullptr;
+		b = nullptr;
 
 		if (oldest.size() > line_length)
 			oldest.pop();
