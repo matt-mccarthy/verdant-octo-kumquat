@@ -18,21 +18,21 @@ db_ram="1"
 db_cache="2"
 
 
-./db-gen $trace $mod $fsize $idlist $db $dbdir
+#./db-gen $trace $mod $fsize $idlist $db $dbdir
 
 echo "Done generating"
 
-./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
-./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod
-./benchmark $mode_dir $read_trace $numtrials $idlist $fsize $dbdir $mod $trace
+#./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
+#./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod
+#./benchmark $mode_dir $read_trace $numtrials $idlist $fsize $dbdir $mod $trace
 
-./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_raw
-./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_raw
-./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_raw
+#./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_raw
+#./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_raw
+#./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_raw
 
-./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_ram
-./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_ram
-./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_ram
+#./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_ram
+#./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_ram
+#./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_ram
 
 ./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_cache $linelen $numlines
 ./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_cache $linelen $numlines

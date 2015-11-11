@@ -1,3 +1,6 @@
+#ifndef CACHE_H
+#define CACHE_H
+
 #include <atomic>
 #include <condition_variable>
 #include <ctime>
@@ -48,5 +51,10 @@ class cache
 		std::mutex				queue_lock;	// Queue lock
 		std::thread				reader;		// Reading thread
 		std::condition_variable	sleep;		// Sleep condition
+		std::condition_variable	wait;		// Condition to make main block
+		std::mutex				waiter;
+		std::unique_lock<std::mutex>	wait_lock;
 		std::atomic_bool		stop;		// Stop flag
 };
+
+#endif

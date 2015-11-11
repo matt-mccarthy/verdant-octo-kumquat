@@ -1,0 +1,41 @@
+#include <chrono>
+
+#include "entry_seq.h"
+
+using std::chrono::system_clock;
+using std::time_t;
+
+
+entry_seq::entry_seq(int offset) 
+	: db_offset(offset), memory(nullptr),
+		accessed(system_clock::to_time_t(system_clock::now())) {}
+
+entry_seq::~entry_seq()
+{
+	if (memory)
+		delete[] memory;
+}
+
+entry_seq& entry_seq::operator=(entry_seq&& in)
+{
+	db_offset	= in.db_offset;
+	memory		= in.memory;
+	accessed	= in.accessed;
+
+	return *this;
+}
+
+void entry_seq::del()
+{
+	if (is_in_cache())
+	{
+		delete[] memory;
+		memory = nullptr;
+	}
+}
+
+bool entry_seq::is_in_cache()
+{
+	return (bool)memory;
+}
+
