@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 	double av(get_average<double>(times, num_trials));
 	double sd(get_stddev<double>(times, num_trials, av));
 
-	cout << av << "\t" << sd;
+	cout << av << "\t" << sd;0
 
 	if (db_read == DB_CACHE)
 	{

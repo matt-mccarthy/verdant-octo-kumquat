@@ -150,12 +150,9 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 	#else
 	db.open(db_loc);
 	#endif
-	
-	int cnt(0);
 
 	for (int* i = ordering ; *i != -1 ; i++)
 	{
-		cout << "I " << *i << endl;
 		#ifdef DEBUG
 		char* ptr = db[*i];
 		if (ptr == nullptr)
@@ -178,13 +175,9 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 			cout << (double)(cur_fetch - prev_fetch)/5000.0 << endl;
 			prev_fetch = cur_fetch;
 		}
-		cnt = (cnt < db.get_size()-15000) ? db.get_size()-15000 : cnt;
-		cout << "O " << *i << endl;
 	}
 
 	tf	= system_clock::now();
-
-	//db.clear();
 
 	unsigned	misses(db.get_num_fetches());
 	double		time((duration_cast< duration<double> >(tf - ts)).count()*1000.0);
