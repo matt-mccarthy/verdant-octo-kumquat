@@ -9,51 +9,24 @@
 #include <unordered_map>
 #include <vector>
 
+#include "entry.h"
+#include "query.h"
+
 class cache
 {
 	public:
-		cache(std::unordered_map<int,int>& mapper, std::string& db_location,
-				 unsigned entry_length, unsigned entries_per_line,
-				unsigned num_lines);
+		cache(std::unordered_map<int,int>& mapper, unsigned entry_length,
+				unsigned entries_per_line, unsigned num_lines);
 		~cache();
 
 		int get_num_fetches();
 
-		char* operator[](int entry_id);
-		void clear();
+		char*	operator[](int entry_id);
+		void	clear();
+		bool	open(std::string& db_loc);
+		int		get_size();
 
 	private:
-		class entry
-		{
-			public:
-				entry() {}
-				entry(int offset);
-				entry&	operator=(entry&& in);
-				bool	operator<=(entry& in);
-				void	del();
-				bool	is_in_cache();
-				~entry();
-
-				int					db_offset;
-				char*				memory;
-				std::time_t			accessed;
-				std::mutex			lock;
-		};
-
-		struct query
-		{
-			public:
-				query() {}
-				query(int id, bool now)
-				{
-					this -> id	= id;
-					immediate	= now;
-				}
-				int		id;
-				bool	immediate;
-				bool	operator()(const query& a, const query& b);
-		};
-
 		void read();
 		void add_to_db(int id);
 		void add_to_queue(int id);

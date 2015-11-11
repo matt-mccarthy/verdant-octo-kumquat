@@ -1,3 +1,6 @@
+/// Compile with g++5.2.0
+/// g++ -O3 -std=c++11 db-gen.cpp -o db-gen
+
 #include <algorithm>
 #include <cerrno>
 #include <cstdlib>

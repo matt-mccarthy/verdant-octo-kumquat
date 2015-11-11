@@ -6,25 +6,36 @@ numtrials=$4
 linelen=$5
 numlines=$6
 idlist="id_list.txt"
-db="db.txt"
-dbdir="db-files"
+db="./ext/db.txt"
+dbdir="./ext/db-files"
+mode_dir="0"
+mode_db="1"
+read_cont="0"
+read_rand="1"
+read_trace="2"
+db_raw="0"
+db_ram="1"
+db_cache="2"
+
 
 ./db-gen $trace $mod $fsize $idlist $db $dbdir
 
-./benchmark 0 0 $numtrials $idlist $fsize $dbdir $mod
-./benchmark 0 1 $numtrials $idlist $fsize $dbdir $mod
-./benchmark 0 2 $numtrials $idlist $fsize $dbdir $mod $trace
+echo "Done generating"
 
-./benchmark 1 0 $numtrials $idlist $fsize $db 0
-./benchmark 1 1 $numtrials $idlist $fsize $db 0
-./benchmark 1 2 $numtrials $idlist $fsize $db $trace 0
+./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
+./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod
+./benchmark $mode_dir $read_trace $numtrials $idlist $fsize $dbdir $mod $trace
 
-./benchmark 1 0 $numtrials $idlist $fsize $db 1
-./benchmark 1 1 $numtrials $idlist $fsize $db 1
-./benchmark 1 2 $numtrials $idlist $fsize $db $trace 1
+./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_raw
+./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_raw
+./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_raw
 
-./benchmark 1 0 $numtrials $idlist $fsize $db 2 $linelen $numlines
-./benchmark 1 1 $numtrials $idlist $fsize $db 2 $linelen $numlines
-./benchmark 1 2 $numtrials $idlist $fsize $db $trace 2 $linelen $numlines
+./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_ram
+./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_ram
+./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_ram
+
+./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_cache $linelen $numlines
+./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_cache $linelen $numlines
+./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_cache $linelen $numlines
 
 rm -rf $dbdir $db $idlist
