@@ -1,28 +1,17 @@
-#include <chrono>
-
 #include "cache_seq.h"
 
-using std::chrono::duration;
-using std::chrono::duration_cast;
-using std::chrono::system_clock;
 using std::queue;
 using std::string;
-using std::time_t;
 using std::unordered_map;
 using std::vector;
 
 typedef unordered_map<int, int>	db_map;
 
-std::time_t get_time_s()
-{
-	return std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-}
-
 cache_seq::cache_seq(db_map& mapper, unsigned entry_length, unsigned entries_per_line,
 				unsigned num_lines)
-			: fetch_count(0), entry_count(0),
-				entry_size(entry_length), line_length(entries_per_line),
-				line_count(num_lines), cache_size(line_count*line_length)
+			: fetch_count(0), entry_count(0), entry_size(entry_length),
+				line_length(entries_per_line), line_count(num_lines),
+				cache_size(line_count*line_length)
 {
 	// Initialize the cache map
 	for (auto i : mapper)
@@ -61,7 +50,6 @@ char* cache_seq::operator[](int entry_id)
 
 	else
 	{
-		cur_entry->accessed = get_time_s();
 		cache_cont.erase(cur_entry->spot);
 		cache_cont.push_back(cur_entry);
 		cur_entry -> spot = prev(cache_cont.end());
@@ -102,7 +90,7 @@ void cache_seq::add_to_queue(int id)
 
 	add_to_db(id);
 
-//	// Enqueue the next few ids with normal priority
+	// Enqueue the next few ids with normal priority
 //	auto itr = cache_map.find(id);
 //	itr++;
 //	for (unsigned i = 1 ; i < line_length && itr != cache_map.end() ; i++)
@@ -119,52 +107,13 @@ void cache_seq::add_to_queue(int id)
 
 void cache_seq::garbage_collect()
 {
-//	// Find the first entry in cache
-//	queue<entry_seq*> oldest;
-
-//	entry_seq* dummy = new entry_seq(0);
-//	entry_count++;
-
-//	oldest.push(dummy);
-//	// Populate the queue
-//	for (auto i(cache_map.begin()) ; i != cache_map.end() ; i++)
-//	{
-//		entry_seq* b = oldest.back();
-//		
-//		if (i -> second.memory != nullptr && b -> memory != nullptr)
-//			if (i -> second.accessed <= b->accessed )
-//				oldest.push(&(i->second));
-
-//		b = nullptr;
-
-//		if (oldest.size() > line_length)
-//			oldest.pop();
-//	}
-
-//	// Delete everything in the queue from cache
-//	entry_seq* i;
-//	while (!oldest.empty())
-//	{
-//		i = oldest.front();
-//		i->del();
-//		oldest.pop();
-//	
-//		entry_count--;
-//	}
-//	i = nullptr;
-//	
-//	if (dummy -> memory)
-//		entry_count--;
-
-//	delete dummy;
-
 	for (int i = 0 ; i < line_length && !cache_cont.empty(); i++)
 	{
 		entry_seq* f(cache_cont.front());
 		f ->del();
 		cache_cont.pop_front();
 	}
-	
+
 	entry_count -= line_length;
 }
 

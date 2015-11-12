@@ -1,5 +1,4 @@
 #include <atomic>
-#include <ctime>
 #include <list>
 
 class entry_seq
@@ -14,6 +13,5 @@ class entry_seq
 
 		int								db_offset;
 		char*							memory;
-		std::time_t						accessed;
 		std::list<entry_seq*>::iterator	spot;
 };

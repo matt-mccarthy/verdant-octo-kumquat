@@ -6,14 +6,11 @@
 #include <chrono>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/mman.h>
 
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/stream.hpp>
@@ -140,6 +137,11 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 	cache_seq db(mapper, file_size, line_size, lines_stored);
 	int req_ctr(0);
 	int prev_fetch(0);
+	stringstream str;
+	
+	#ifdef DEBUG
+	int over(0);
+	#endif
 
 	ts	= system_clock::now();
 
@@ -168,18 +170,41 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 				cerr << "Incorrect read (cache)" << endl;
 				exit(1);
 			}
+		if (db.get_size() - 15000 > over)
+			over = db.get_size() - 15000;
 		#else
 		db[*i];
 		#endif
-//		if (++req_ctr % 5000 == 0)
-//		{
-//			int cur_fetch(db.get_num_fetches());
-//			cout << (double)(cur_fetch - prev_fetch)/5000.0 << endl;
-//			prev_fetch = cur_fetch;
-//		}
+		if (++req_ctr % 5000 == 0)
+		{
+			int cur_fetch(db.get_num_fetches());
+			str << (double)(cur_fetch - prev_fetch)/5000.0 << endl;
+			prev_fetch = cur_fetch;
+		}
+
 	}
 
 	tf	= system_clock::now();
+
+	stringstream r;
+	r << "cache_out_" << system_clock::to_time_t(system_clock::now()) << ".txt" << endl;
+
+	ofstream resout(r.str());
+
+	#ifdef DEBUG
+	resout << "Over: " << over << endl;
+	#endif
+
+	int i = 0;
+	while (!str.eof())
+	{
+		string x("");
+		str >> x;
+		i+=5000;
+		resout << i << "\t" << x << endl;
+	}
+
+	resout.close();
 
 	unsigned	misses(db.get_num_fetches());
 	double		time((duration_cast< duration<double> >(tf - ts)).count()*1000.0);
@@ -211,12 +236,7 @@ double run_experiment_ram(int* ordering, db_map& mapper, int file_size, int num_
 	}
 	#endif
 
-	//int		f_id(open(db_loc.c_str(), O_RDONLY));
-	//char*	m_id((char*)mmap(0, num_ids, PROT_READ, MAP_SHARED, f_id, 0));
-
 	for (int* i = ordering ; *i != -1 ; i++)
-		//memcpy(read_here, m_id + mapper[*i], file_size);
-		//m_id[mapper[i]];
 	{
 		db_wrap.seekg(mapper[*i], db_wrap.beg);
 		#ifdef DEBUG
@@ -243,13 +263,10 @@ double run_experiment_ram(int* ordering, db_map& mapper, int file_size, int num_
 	}
 
 	tf	= system_clock::now();
-	
-	//munmap(m_id, num_ids);
-	//close(f_id);
-	
+
 	db_wrap.close();
 	db.close();
-	
+
 	delete read_here;
 
 	return (duration_cast< duration<double> >(tf - ts)).count()*1000.0;
