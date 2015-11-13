@@ -1,10 +1,21 @@
-\documentclass[notitlepage]{article}
+\documentclass[notitlepage, twocolumn]{article}
 \usepackage{fullpage}
+\usepackage[affil-it]{authblk}
+\usepackage{hyperref}
 
-\title{Program 2}
-%\subtitle{The Way the \textit{Disk} Turns}
+\title{\bf
+Program 2\\
+The Way the \textit{Disk} turns
+}
+
 \date{November 2015}
-\author{Matt McCarthy}
+\author{
+Matt McCarthy
+}
+\affil{Christopher Newport University\\
+\texttt{\href{mailto:matthew.mccarthy.12@cnu.edu}{matthew.mccarthy.12@cnu.edu}}
+}
+
 
 \begin{document}
 
@@ -12,9 +23,91 @@
 
 \noindent\textbf{Abstract}
 
-\noindent Abstract here.
+\noindent We investigate the effect of spatial and temporal locality on disk I/O and cache performance.
 
 \section{Background}
-jjs
+
+In order to parallelize code, a developer must first decide how to decompose the problem.
+A common and simple decomposition is data decomposition where the developer assigns different blocks of data to each processor.
+However, when the data is stored on a disk, like in a database, I/O performance becomes a significant bottleneck.
+While the operating system has primary responsibility for optimizing disk reads, it only has a small window of read requests with which it can make optimization decisions.
+Thus, when possible, the developer should endeavor to use spatial and temporal locality at the application level.
+
+\section{Set up}
+
+We consider a file system containing 2GB of text files, each of which is exactly 14KB.
+We then take a list of numbers, identified by an integer $k$ such that
+\[
+	51 \leq k \leq 161811
+\]
+which is stored in \verb|k.txt|.
+
+\section{Test Environment}
+
+The test was run on a machine running Arch Linux with the kernel \verb|4.2-ck| with an Intel i7-4770k at 4.2GHz.
+The executables, the id list, and web server trace file were stored on a SSD and all directories and databases were written to a 5400RPM mechanical harddrive mounted at \verb|./ext|.
+The mechanical harddrive was filled with a single EXT2 partition.
+We utilized a shell script named \verb|run.sh|\footnote{Located at \url{https://github.com/matt-mccarthy/verdant-octo-kumquat}} that managed our test parameters.
+
+The usage of \verb|run.sh| is:\\
+\begin{footnotesize}
+\verb|run.sh <trace> <modulus> <file size> <num trials>|\\
+\verb|<cache line> <number of lines>|
+\end{footnotesize}\\
+We ran, \verb|run.sh trace.txt 250 14336 5 1 15000|.
+
+We generate the test environment with a program \verb|db-gen|\footnote{Compiled from db-gen.cpp}.
+This script will invoke \verb|db-gen| to create a list of file ids listed in \verb|trace.txt|, denoted $I$, and for each $k\in I$ will compute $k\equiv_{250}k_hk_tk_o$ where $k_h$, $k_t$, and $k_o$ are the hundreds, tens, and ones digits respectively.
+It will then produce a file \verb|/ext/db-files/k_h/k_t/k_o/k.txt|, filled with 14336 null characters, which makes it exactly 14KB large.
+For example, with the id 361, it will create \verb|/ext/db-files/1/1/1/361.txt|.
+
+\section{Sequential Read Time}
+
+To begin our test suite, we make a program, namely \verb|benchmark|\footnote{Source code for benchmark is benchmark.cpp and every file in the src directory in the GitHub repo.},
+read through each id in order from the disk.
+This linear traversal of the files will be the fastest the disk can possibly perform on our directory structure due to both, how the disk works and operating system optimizations.
+
+We pass our sequential directory test\footnote{The source for this test is the run\_experiment\_dir function in src/test\_suite.hpp} the list of file ids in sequential order, a mapping that takes each file id to a filename on the disk, and the file size (14336B).
+The test would then return a time in milliseconds, and was ran five times.
+
+For the sequential read time our results were $t_{dir,s}=(415.99 \pm 50.77)ms$.
+
+\section{Randomized Read Time}
+
+In order to determine the seek time of the disk, we ran the test for sequential read time again but instead shuffled the file ids into a random order on each trial.
+The yielded a read time of $(463.32 \pm 2.18)ms$.
+This results in an average seek time of $3.38\mu s$.
+
+\section{Web Server Trace}
+
+Since in real use cases, data is accessed in neither a sequential nor a random manner.
+To demonstrate performance in the real life use case, we read file ids in the order an actual web server trace, namely \verb|trace.txt|, provides.
+
+By inspection, we saw that files were often accessed multiple times consecutively, which is strong temporal locality.
+Furthermore, many ids were numerically ``close" suggesting some spatial locality.
+
+Our results for this test, we passed the ordering of ids listed in order that the trace dictated to our directory test.
+This resulted in an average execution time of $(4401.58 \pm 11.5646)ms$.
+
+\section{Database}
+
+In addition to producing the directory structure, \verb|db-gen| produces a database file that has the contents of each of the directory files pushed into one large file.
+The goal of this section is to determine the benefits of using a database file instead of a large directory structure.
+In theory, this should lower the amount of overhead incurred by repeatedly opening and closing files on the filesystem.
+
+To test database performance, we modified the directory test to use a database file\footnote{The test is run\_experiment\_db in src/test\_suite.hpp}.
+This now takes a database file location, a map from each id to an offset in the database, instead of the directory map.
+\begin{figure}[h!]
+\centering
+\begin{tabular}{l|r|r}
+&Directory&Database\\\hline
+Sequential&$415.99ms$&$213.08ms$\\\hline
+Random&$463.32ms$&$266.93ms$\\\hline
+Trace&$8509.17ms$&$4401.58ms$
+\end{tabular}
+\caption{Directory vs. Database}
+\end{figure}
+As shown in Figure 1, using the database file effectively doubles performance in our test environment.
+By our inspection from Section 6, we could potentially reorder the files in the database in order to enhance the locality of the trace.
 
 \end{document}
