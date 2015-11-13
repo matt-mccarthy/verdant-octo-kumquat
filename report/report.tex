@@ -97,17 +97,56 @@ In theory, this should lower the amount of overhead incurred by repeatedly openi
 
 To test database performance, we modified the directory test to use a database file\footnote{The test is run\_experiment\_db in src/test\_suite.hpp}.
 This now takes a database file location, a map from each id to an offset in the database, instead of the directory map.
-\begin{figure}[h!]
-\centering
-\begin{tabular}{l|r|r}
-&Directory&Database\\\hline
-Sequential&$415.99ms$&$213.08ms$\\\hline
-Random&$463.32ms$&$266.93ms$\\\hline
-Trace&$8509.17ms$&$4401.58ms$
-\end{tabular}
-\caption{Directory vs. Database}
-\end{figure}
+
 As shown in Figure 1, using the database file effectively doubles performance in our test environment.
 By our inspection from Section 6, we could potentially reorder the files in the database in order to enhance the locality of the trace.
+
+\section{RAM Disk}
+
+For our next series of tests, we modified the database test to map the database file into memory using Boost's \verb|mapped_file_source| and then read from that.
+As demonstrated in Figure 1, the RAM disk's read performance was better than the database's.
+More interestingly, the RAM disk's trace completed in nearly half the time of the database's trace.
+
+While, mapping the whole database allows for exceptional I/O performance, mapping huge data sets into memory stops being viable after the size of the data set reaches a certain value.
+
+\begin{figure}
+\centering
+\begin{tabular}{l|r|r|r}
+&Directory&DB&RAM\\\hline
+Sequential&$415.99$&$213.08$&184.78\\\hline
+Random&$463.32$&$266.93$&236.494\\\hline
+Trace&$8509.17$&$4401.58$&2615.1
+\end{tabular}
+\caption{Read performance. All times reported in ms.}
+\end{figure}
+
+\section{Cache}
+
+Since pulling the entire file into memory can quickly become inviable, we implement a cache to store a set number of entries in memory as we progress through the trace.
+
+We use an \verb|unordered_map<int,entry_seq>|\footnote{Cache source is found in src/cache\_seq.h cache\_seq.cpp, entry\_seq.h, and entry\_seq.cpp} to hold the cache.
+This map is initialized with all of the file ids and a \verb|entry_seq| for each id.
+Each \verb|entry_seq| object holds an offset in the database file, a pointer to memory (which is \verb|nullptr| when it is not in cache), and an iterator to a position in the cache list.
+
+When we access an entry in the cache, we check if the pointer in its corresponding \verb|entry_seq| object is null.
+If it is, we add the entry into cache (read from the disk into a location in memory) and add a pointer to it in the back of the cache list, additionally we update the iterator to point to its location in the list.
+If it is not null, we move the pointer in the cache list to the end of the list and then update the iterator in the object to point to the new location of the pointer.
+
+\subsection{Perfect Cache}
+
+In order to determine the effectiveness of our cache, we caclulate the miss rate of a perfect cache of infinite size.
+In the trace, we counted the number of unique ids and then the total number of requests to determine that our perfect cache would have a hit rate of approximately .95, which counts only compulsory misses.
+
+\subsection{Replacement Policy}
+
+We implement a Least Recently Used replacement policy.
+We replace whenever we attempt to add an entry to the cache, but the cache is full.
+In order to replace an element, we simply make the \verb|entry_seq| object at the front of the list delete its memory contents and then we remove the pointer from the list.
+
+Once the cache is populated, our cache's asymptotic efficiency becomes $O(n)$ since on each add, we must also remove an entry.
+
+\subsection{Results}
+
+
 
 \end{document}

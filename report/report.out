@@ -1,0 +1,11 @@
+\BOOKMARK [1][-]{section.1}{Background}{}% 1
+\BOOKMARK [1][-]{section.2}{Set up}{}% 2
+\BOOKMARK [1][-]{section.3}{Test Environment}{}% 3
+\BOOKMARK [1][-]{section.4}{Sequential Read Time}{}% 4
+\BOOKMARK [1][-]{section.5}{Randomized Read Time}{}% 5
+\BOOKMARK [1][-]{section.6}{Web Server Trace}{}% 6
+\BOOKMARK [1][-]{section.7}{Database}{}% 7
+\BOOKMARK [1][-]{section.8}{RAM Disk}{}% 8
+\BOOKMARK [1][-]{section.9}{Cache}{}% 9
+\BOOKMARK [2][-]{subsection.9.1}{Perfect Cache}{section.9}% 10
+\BOOKMARK [2][-]{subsection.9.2}{Replacement Policy}{section.9}% 11
