@@ -136,7 +136,6 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 	high_resolution_clock::time_point ts, tf;
 	cache_seq db(mapper, file_size, line_size, lines_stored);
 	int req_ctr(0);
-	int prev_fetch(0);
 	stringstream str;
 	
 	#ifdef DEBUG
@@ -178,8 +177,7 @@ c_res run_experiment_cache(int* ordering, db_map& mapper, int file_size,
 		if (++req_ctr % 5000 == 0)
 		{
 			int cur_fetch(db.get_num_fetches());
-			str << (double)(cur_fetch - prev_fetch)/5000.0 << endl;
-			prev_fetch = cur_fetch;
+			str << (double)(cur_fetch)/req_ctr << endl;
 		}
 
 	}

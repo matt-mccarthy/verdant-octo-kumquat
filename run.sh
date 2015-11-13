@@ -24,30 +24,30 @@ echo "Generating Test Environment"
 echo "Done generating"
 echo "Directory"
 echo "Continuous"
-./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
+#./benchmark $mode_dir $read_cont $numtrials $idlist $fsize $dbdir $mod
 echo "Random"
-./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod
+#./benchmark $mode_dir $read_rand $numtrials $idlist $fsize $dbdir $mod
 echo "Trace"
-./benchmark $mode_dir $read_trace $numtrials $idlist $fsize $dbdir $mod $trace
+#./benchmark $mode_dir $read_trace $numtrials $idlist $fsize $dbdir $mod $trace
 echo "DB Raw"
 echo "Continuous"
-./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_raw
+#./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_raw
 echo "Random"
-./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_raw
+#./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_raw
 echo "Trace"
-./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_raw
+#./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_raw
 echo "DB RAM"
 echo "Continuous"
-./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_ram
+#./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_ram
 echo "Random"
-./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_ram
+#./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_ram
 echo "Trace"
-./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_ram
+#./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_ram
 echo "DB Cache"
 echo "Continuous"
-./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_cache $linelen $numlines
+#./benchmark $mode_db $read_cont $numtrials $idlist $fsize $db $db_cache $linelen $numlines
 echo "Random"
-./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_cache $linelen $numlines
+#./benchmark $mode_db $read_rand $numtrials $idlist $fsize $db $db_cache $linelen $numlines
 echo "Trace"
 ./benchmark $mode_db $read_trace $numtrials $idlist $fsize $db $trace $db_cache $linelen $numlines
 
